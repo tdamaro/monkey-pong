@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PONG</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, #001a2e 0%, #000 70%);
+            z-index: -1;
+        }
+
+        h1 {
+            color: #00ffff;
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 0.5rem;
+            text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff88;
+            margin-bottom: 1.5rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff88; }
+            50% { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff, 0 0 80px #00ffff44; }
+        }
+
+        .scoreboard {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .score-block { text-align: center; }
+
+        .score-block .label {
+            color: #ffffff88;
+            font-size: 0.7rem;
+            letter-spacing: 0.2rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .score-block .number {
+            color: #fff;
+            font-size: 3rem;
+            font-weight: 700;
+            text-shadow: 0 0 15px #ffffff88;
+            transition: all 0.1s;
+        }
+
+        .score-block .number.flash {
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+        }
+
+        .vs {
+            color: #ffffff33;
+            font-size: 1rem;
+            letter-spacing: 0.2rem;
+        }
+
+        canvas {
+            border: 1px solid #00ffff44;
+            box-shadow: 0 0 30px #00ffff22, 0 0 60px #00ffff11;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .controls p {
+            color: #ffffff44;
+            font-size: 0.65rem;
+            letter-spacing: 0.15rem;
+        }
+
+        .btn-row { display: flex; gap: 1rem; }
+
+        button {
+            background: transparent;
+            border: 1px solid #00ffff88;
+            color: #00ffff;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.2rem;
+            padding: 0.6rem 1.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 2px;
+        }
+
+        button:hover {
+            background: #00ffff22;
+            border-color: #00ffff;
+            box-shadow: 0 0 15px #00ffff44;
+        }
+
+        button:active { background: #00ffff44; }
+
+        #overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #00000099;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        #overlay.hidden { display: none; }
+
+        #overlay .msg {
+            color: #00ffff;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.3rem;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+        }
+
+        #overlay .sub {
+            color: #ffffff66;
+            font-size: 0.6rem;
+            letter-spacing: 0.2rem;
+            margin-top: 0.8rem;
+        }
+
+        .canvas-wrap { position: relative; }
+    </style>
+</head>
+<body>
+
+    <h1>🐒 MONKEY PONG 🐒</h1>
+
+    <div class="scoreboard">
+        <div class="score-block">
+            <div class="label">PLAYER</div>
+            <div class="number" id="playerScore">0</div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="score-block">
+            <div class="label">CPU</div>
+            <div class="number" id="computerScore">0</div>
+        </div>
+    </div>
+
+    <div class="canvas-wrap">
+        <canvas id="pongCanvas" width="800" height="500"></canvas>
+        <div id="overlay">
+            <div class="msg">PRESS START</div>
+            <div class="sub">TO BEGIN</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <p>MOUSE  or  ↑ ↓  ARROW KEYS  —  MOVE YOUR MONKEY</p>
+        <div class="btn-row">
+            <button id="startBtn">START</button>
+            <button id="resetBtn">RESET</button>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('pongCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayMsg = overlay.querySelector('.msg');
+    const overlaySub = overlay.querySelector('.sub');
+    const playerScoreEl = document.getElementById('playerScore');
+    const computerScoreEl = document.getElementById('computerScore');
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const PADDLE_W = 40;
+    const PADDLE_H = 90;
+    const BALL_SIZE = 10;
+    const WIN_SCORE = 7;
+
+    let gameRunning = false;
+    let animFrame;
+
+    const state = {
+        player: { y: H / 2 - PADDLE_H / 2, score: 0 },
+        cpu: { y: H / 2 - PADDLE_H / 2, score: 0 },
+        ball: { x: W / 2, y: H / 2, vx: 5, vy: 3 },
+        mouse: H / 2,
+        particles: []
+    };
+
+    canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        state.mouse = e.clientY - rect.top;
+    });
+
+    let keys = {};
+    document.addEventListener('keydown', e => keys[e.key] = true);
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    function resetBall(dir = 1) {
+        state.ball.x = W / 2;
+        state.ball.y = H / 2;
+        const angle = (Math.random() * 0.6 - 0.3);
+        const speed = 5;
+        state.ball.vx = dir * speed * Math.cos(angle);
+        state.ball.vy = speed * Math.sin(angle);
+    }
+
+    function spawnParticles(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 1;
+            state.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                color
+            });
+        }
+    }
+
+    function flashScore(el) {
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 300);
+    }
+
+    // Draw a monkey face as the paddle
+    function drawMonkey(x, y, w, h, facing, glowColor) {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const radius = w / 2;
+
+        ctx.save();
+
+        // Glow effect
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 18;
+
+        // Body / head (brown circle)
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, radius, h * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ears
+        const earR = radius * 0.45;
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.arc(cx - radius * 0.85, cy, earR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + radius * 0.85, cy, earR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner ears
+        ctx.fillStyle = '#D2691E';
+        ctx.beginPath();
+        ctx.arc(cx - radius * 0.85, cy, earR * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + radius * 0.85, cy, earR * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Face patch (lighter tan oval)
+        ctx.fillStyle = '#D2691E';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + h * 0.05, radius * 0.65, h * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Eyes
+        const eyeOffsetX = radius * 0.3;
+        const eyeOffsetY = -h * 0.1;
+        const eyeR = radius * 0.18;
+
+        // Eye whites
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx - eyeOffsetX, cy + eyeOffsetY, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + eyeOffsetX, cy + eyeOffsetY, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupils — look toward the ball (facing direction)
+        const pupilOffset = facing === 'right' ? eyeR * 0.3 : -eyeR * 0.3;
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(cx - eyeOffsetX + pupilOffset, cy + eyeOffsetY, eyeR * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + eyeOffsetX + pupilOffset, cy + eyeOffsetY, eyeR * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nostrils
+        ctx.fillStyle = '#5a2800';
+        ctx.beginPath();
+        ctx.arc(cx - radius * 0.15, cy + h * 0.1, radius * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + radius * 0.15, cy + h * 0.1, radius * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Smile
+        ctx.strokeStyle = '#5a2800';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy + h * 0.1, radius * 0.25, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function update() {
+        const ball = state.ball;
+        const player = state.player;
+        const cpu = state.cpu;
+
+        const targetY = state.mouse - PADDLE_H / 2;
+        if (keys['ArrowUp']) state.mouse -= 7;
+        if (keys['ArrowDown']) state.mouse += 7;
+        player.y += (targetY - player.y) * 0.25;
+        player.y = Math.max(0, Math.min(H - PADDLE_H, player.y));
+
+        const cpuCenter = cpu.y + PADDLE_H / 2;
+        const diff = ball.y - cpuCenter;
+        cpu.y += Math.sign(diff) * Math.min(Math.abs(diff), 4.2);
+        cpu.y = Math.max(0, Math.min(H - PADDLE_H, cpu.y));
+
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.y - BALL_SIZE / 2 <= 0) { ball.vy = Math.abs(ball.vy); spawnParticles(ball.x, 0, '#00ffff'); }
+        if (ball.y + BALL_SIZE / 2 >= H) { ball.vy = -Math.abs(ball.vy); spawnParticles(ball.x, H, '#00ffff'); }
+
+        // Player paddle collision
+        const playerRight = 14 + PADDLE_W;
+        if (
+            ball.x - BALL_SIZE / 2 <= playerRight &&
+            ball.x + BALL_SIZE / 2 >= 14 &&
+            ball.y >= player.y &&
+            ball.y <= player.y + PADDLE_H
+        ) {
+            ball.vx = Math.abs(ball.vx) * 1.05;
+            const hitPos = (ball.y - player.y) / PADDLE_H - 0.5;
+            ball.vy = hitPos * 10;
+            ball.x = playerRight + BALL_SIZE / 2;
+            spawnParticles(ball.x, ball.y, '#00ffff');
+        }
+
+        // CPU paddle collision
+        const cpuX = W - 14 - PADDLE_W;
+        if (
+            ball.x + BALL_SIZE / 2 >= cpuX &&
+            ball.x - BALL_SIZE / 2 <= cpuX + PADDLE_W &&
+            ball.y >= cpu.y &&
+            ball.y <= cpu.y + PADDLE_H
+        ) {
+            ball.vx = -Math.abs(ball.vx) * 1.05;
+            const hitPos = (ball.y - cpu.y) / PADDLE_H - 0.5;
+            ball.vy = hitPos * 10;
+            ball.x = cpuX - BALL_SIZE / 2;
+            spawnParticles(ball.x, ball.y, '#ff6600');
+        }
+
+        const maxSpeed = 14;
+        const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+        if (speed > maxSpeed) {
+            ball.vx = (ball.vx / speed) * maxSpeed;
+            ball.vy = (ball.vy / speed) * maxSpeed;
+        }
+
+        if (ball.x < 0) {
+            cpu.score++;
+            computerScoreEl.textContent = cpu.score;
+            flashScore(computerScoreEl);
+            if (cpu.score >= WIN_SCORE) { endGame('CPU WINS 🐒'); return; }
+            resetBall(-1);
+        }
+        if (ball.x > W) {
+            player.score++;
+            playerScoreEl.textContent = player.score;
+            flashScore(playerScoreEl);
+            if (player.score >= WIN_SCORE) { endGame('YOU WIN! 🐒'); return; }
+            resetBall(1);
+        }
+
+        state.particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.05;
+            p.vx *= 0.95;
+            p.vy *= 0.95;
+        });
+        state.particles = state.particles.filter(p => p.life > 0);
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000811';
+        ctx.fillRect(0, 0, W, H);
+
+        // Center dashed line
+        ctx.setLineDash([10, 15]);
+        ctx.strokeStyle = '#ffffff18';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, 0);
+        ctx.lineTo(W / 2, H);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw monkey paddles
+        drawMonkey(14, state.player.y, PADDLE_W, PADDLE_H, 'right', '#00ffff');
+        drawMonkey(W - 14 - PADDLE_W, state.cpu.y, PADDLE_W, PADDLE_H, 'left', '#ff6622');
+
+        // Ball
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 25;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(state.ball.x, state.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Particles
+        state.particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+    }
+
+    function loop() {
+        update();
+        draw();
+        animFrame = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+        if (gameRunning) return;
+        gameRunning = true;
+        overlay.classList.add('hidden');
+        state.player.y = H / 2 - PADDLE_H / 2;
+        state.cpu.y = H / 2 - PADDLE_H / 2;
+        resetBall(1);
+        loop();
+    }
+
+    function endGame(msg) {
+        cancelAnimationFrame(animFrame);
+        gameRunning = false;
+        overlayMsg.textContent = msg;
+        overlaySub.textContent = 'PRESS RESET TO PLAY AGAIN';
+        overlay.classList.remove('hidden');
+    }
+
+    function resetGame() {
+        cancelAnimationFrame(animFrame);
+        gameRunning = false;
+        state.player.score = 0;
+        state.cpu.score = 0;
+        state.particles = [];
+        playerScoreEl.textContent = '0';
+        computerScoreEl.textContent = '0';
+        overlayMsg.textContent = 'PRESS START';
+        overlaySub.textContent = 'TO BEGIN';
+        overlay.classList.remove('hidden');
+        state.player.y = H / 2 - PADDLE_H / 2;
+        state.cpu.y = H / 2 - PADDLE_H / 2;
+        draw();
+    }
+
+    draw();
+</script>
+</body>
+</html>
