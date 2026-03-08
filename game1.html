@@ -201,8 +201,9 @@
     const H = canvas.height;
     const PADDLE_W = 40;
     const PADDLE_H = 90;
-    const BALL_SIZE = 10;
+    const BALL_SIZE = 18;  // larger ball
     const WIN_SCORE = 7;
+    const CPU_SPEED = 2.5; // slower CPU — easier to beat
 
     let gameRunning = false;
     let animFrame;
@@ -331,42 +332,258 @@
         ctx.restore();
     }
 
+    function drawSpeedGauge() {
+        const ball = state.ball;
+        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        const maxSpeed = 16;
+        const ratio = Math.min(speed / maxSpeed, 1);
+
+        const gaugeH = 160;
+        const gaugeW = 10;
+        const gaugeX = W / 2 - gaugeW / 2;
+        const gaugeY = H / 2 - gaugeH / 2;
+
+        // Background track
+        ctx.fillStyle = '#ffffff0d';
+        ctx.beginPath();
+        ctx.roundRect(gaugeX, gaugeY, gaugeW, gaugeH, 4);
+        ctx.fill();
+
+        // Fill — green -> yellow -> red
+        const hue = Math.round(120 - ratio * 120);
+        const fillH = gaugeH * ratio;
+        ctx.save();
+        ctx.shadowColor = `hsl(${hue}, 100%, 55%)`;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = `hsl(${hue}, 100%, 55%)`;
+        ctx.beginPath();
+        ctx.roundRect(gaugeX, gaugeY + gaugeH - fillH, gaugeW, fillH, 4);
+        ctx.fill();
+        ctx.restore();
+
+        // SPEED label above
+        ctx.save();
+        ctx.font = 'bold 9px Orbitron, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff55';
+        ctx.fillText('SPEED', W / 2, gaugeY - 10);
+
+        // Numeric value below
+        ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
+        ctx.font = 'bold 11px Orbitron, monospace';
+        ctx.fillText(speed.toFixed(1), W / 2, gaugeY + gaugeH + 18);
+        ctx.restore();
+    }
+
     function update() {
         const ball = state.ball;
         const player = state.player;
         const cpu = state.cpu;
 
+        // Player paddle movement
         const targetY = state.mouse - PADDLE_H / 2;
         if (keys['ArrowUp']) state.mouse -= 7;
         if (keys['ArrowDown']) state.mouse += 7;
         player.y += (targetY - player.y) * 0.25;
         player.y = Math.max(0, Math.min(H - PADDLE_H, player.y));
 
+        // CPU paddle — limited speed makes it beatable
         const cpuCenter = cpu.y + PADDLE_H / 2;
         const diff = ball.y - cpuCenter;
-        cpu.y += Math.sign(diff) * Math.min(Math.abs(diff), 4.2);
+        cpu.y += Math.sign(diff) * Math.min(Math.abs(diff), CPU_SPEED);
         cpu.y = Math.max(0, Math.min(H - PADDLE_H, cpu.y));
 
+        // Ball movement
         ball.x += ball.vx;
         ball.y += ball.vy;
 
-        if (ball.y - BALL_SIZE / 2 <= 0) { ball.vy = Math.abs(ball.vy); spawnParticles(ball.x, 0, '#ff6600'); }
-        if (ball.y + BALL_SIZE / 2 >= H) { ball.vy = -Math.abs(ball.vy); spawnParticles(ball.x, H, '#ff6600'); }
+        // Top/bottom walls
+        if (ball.y - BALL_SIZE / 2 <= 0) {
+            ball.vy = Math.abs(ball.vy);
+            spawnParticles(ball.x, 0, '#ff6600');
+        }
+        if (ball.y + BALL_SIZE / 2 >= H) {
+            ball.vy = -Math.abs(ball.vy);
+            spawnParticles(ball.x, H, '#ff6600');
+        }
 
+        // Player paddle collision (left side)
         const playerRight = 14 + PADDLE_W;
         if (
+            ball.vx < 0 &&
             ball.x - BALL_SIZE / 2 <= playerRight &&
             ball.x + BALL_SIZE / 2 >= 14 &&
-            ball.y >= player.y &&
-            ball.y <= player.y + PADDLE_H
+            ball.y + BALL_SIZE / 2 >= player.y &&
+            ball.y - BALL_SIZE / 2 <= player.y + PADDLE_H
         ) {
             ball.vx = Math.abs(ball.vx) * 1.05;
             const hitPos = (ball.y - player.y) / PADDLE_H - 0.5;
             ball.vy = hitPos * 10;
-            ball.x = playerRight + BALL_SIZE / 2;
+            ball.x = playerRight + BALL_SIZE / 2 + 1;
             spawnParticles(ball.x, ball.y, '#ff6600');
         }
 
+        // CPU paddle collision (right side)
         const cpuX = W - 14 - PADDLE_W;
         if (
-            ball.x + BALL_SIZE /
+            ball.vx > 0 &&
+            ball.x + BALL_SIZE / 2 >= cpuX &&
+            ball.x - BALL_SIZE / 2 <= W - 14 &&
+            ball.y + BALL_SIZE / 2 >= cpu.y &&
+            ball.y - BALL_SIZE / 2 <= cpu.y + PADDLE_H
+        ) {
+            ball.vx = -Math.abs(ball.vx) * 1.05;
+            const hitPos = (ball.y - cpu.y) / PADDLE_H - 0.5;
+            ball.vy = hitPos * 10;
+            ball.x = cpuX - BALL_SIZE / 2 - 1;
+            spawnParticles(ball.x, ball.y, '#ff9900');
+        }
+
+        // Cap ball speed
+        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (speed > 16) {
+            ball.vx = (ball.vx / speed) * 16;
+            ball.vy = (ball.vy / speed) * 16;
+        }
+
+        // Scoring — ball exits left (CPU scores)
+        if (ball.x + BALL_SIZE / 2 < 0) {
+            cpu.score++;
+            computerScoreEl.textContent = cpu.score;
+            flashScore(computerScoreEl);
+            spawnParticles(0, ball.y, '#ff0044');
+            if (cpu.score >= WIN_SCORE) {
+                endGame('CPU WINS!');
+            } else {
+                resetBall(1);
+            }
+        }
+
+        // Scoring — ball exits right (Player scores)
+        if (ball.x - BALL_SIZE / 2 > W) {
+            player.score++;
+            playerScoreEl.textContent = player.score;
+            flashScore(playerScoreEl);
+            spawnParticles(W, ball.y, '#00ff88');
+            if (player.score >= WIN_SCORE) {
+                endGame('YOU WIN!');
+            } else {
+                resetBall(-1);
+            }
+        }
+
+        // Update particles
+        state.particles = state.particles.filter(p => p.life > 0);
+        for (const p of state.particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vx *= 0.92;
+            p.vy *= 0.92;
+            p.life -= 0.04;
+        }
+    }
+
+    function draw() {
+        // Clear
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        ctx.fillStyle = '#0a0500';
+        ctx.fillRect(0, 0, W, H);
+
+        // Dashed center line (two halves to leave room for gauge)
+        ctx.setLineDash([10, 12]);
+        ctx.strokeStyle = '#ffffff0d';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, 0);
+        ctx.lineTo(W / 2, H / 2 - 95);
+        ctx.moveTo(W / 2, H / 2 + 95);
+        ctx.lineTo(W / 2, H);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Speed gauge (center of field)
+        if (gameRunning) drawSpeedGauge();
+
+        // Particles
+        for (const p of state.particles) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Player paddle (left)
+        drawMonkey(14, state.player.y, PADDLE_W, PADDLE_H, 'right', '#ff6600');
+
+        // CPU paddle (right)
+        drawMonkey(W - 14 - PADDLE_W, state.cpu.y, PADDLE_W, PADDLE_H, 'left', '#ff0044');
+
+        // Ball
+        const ball = state.ball;
+        ctx.save();
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Inner highlight
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffcc44';
+        ctx.beginPath();
+        ctx.arc(ball.x - BALL_SIZE * 0.15, ball.y - BALL_SIZE * 0.15, BALL_SIZE * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        animFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+        if (gameRunning) return;
+        gameRunning = true;
+        overlay.classList.add('hidden');
+        resetBall(Math.random() < 0.5 ? 1 : -1);
+        gameLoop();
+    }
+
+    function endGame(msg) {
+        gameRunning = false;
+        cancelAnimationFrame(animFrame);
+        overlayMsg.textContent = msg;
+        overlaySub.textContent = 'PRESS RESET TO PLAY AGAIN';
+        overlay.classList.remove('hidden');
+    }
+
+    function resetGame() {
+        gameRunning = false;
+        cancelAnimationFrame(animFrame);
+        state.player.score = 0;
+        state.cpu.score = 0;
+        state.player.y = H / 2 - PADDLE_H / 2;
+        state.cpu.y = H / 2 - PADDLE_H / 2;
+        state.particles = [];
+        playerScoreEl.textContent = '0';
+        computerScoreEl.textContent = '0';
+        resetBall(1);
+        overlayMsg.textContent = 'PRESS START';
+        overlaySub.textContent = 'TO BEGIN';
+        overlay.classList.remove('hidden');
+        draw();
+    }
+
+    // Initial draw
+    draw();
+</script>
+</body>
+</html>
