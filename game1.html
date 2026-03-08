@@ -24,23 +24,23 @@
             content: '';
             position: fixed;
             inset: 0;
-            background: radial-gradient(ellipse at center, #001a2e 0%, #000 70%);
+            background: radial-gradient(ellipse at center, #1a0a00 0%, #000 70%);
             z-index: -1;
         }
 
         h1 {
-            color: #00ffff;
+            color: #ff6600;
             font-size: 3rem;
             font-weight: 900;
             letter-spacing: 0.5rem;
-            text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff88;
+            text-shadow: 0 0 20px #ff6600, 0 0 40px #ff660088;
             margin-bottom: 1.5rem;
             animation: pulse 2s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff88; }
-            50% { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff, 0 0 80px #00ffff44; }
+            0%, 100% { text-shadow: 0 0 20px #ff6600, 0 0 40px #ff660088; }
+            50% { text-shadow: 0 0 30px #ff6600, 0 0 60px #ff6600, 0 0 80px #ff660044; }
         }
 
         .scoreboard {
@@ -68,8 +68,8 @@
         }
 
         .score-block .number.flash {
-            color: #00ffff;
-            text-shadow: 0 0 20px #00ffff;
+            color: #ff6600;
+            text-shadow: 0 0 20px #ff6600;
         }
 
         .vs {
@@ -79,8 +79,8 @@
         }
 
         canvas {
-            border: 1px solid #00ffff44;
-            box-shadow: 0 0 30px #00ffff22, 0 0 60px #00ffff11;
+            border: 1px solid #ff660044;
+            box-shadow: 0 0 30px #ff660022, 0 0 60px #ff660011;
             display: block;
             border-radius: 4px;
         }
@@ -103,8 +103,8 @@
 
         button {
             background: transparent;
-            border: 1px solid #00ffff88;
-            color: #00ffff;
+            border: 1px solid #ff660088;
+            color: #ff6600;
             font-family: 'Orbitron', monospace;
             font-size: 0.7rem;
             letter-spacing: 0.2rem;
@@ -115,12 +115,12 @@
         }
 
         button:hover {
-            background: #00ffff22;
-            border-color: #00ffff;
-            box-shadow: 0 0 15px #00ffff44;
+            background: #ff660022;
+            border-color: #ff6600;
+            box-shadow: 0 0 15px #ff660044;
         }
 
-        button:active { background: #00ffff44; }
+        button:active { background: #ff660044; }
 
         #overlay {
             position: absolute;
@@ -138,11 +138,11 @@
         #overlay.hidden { display: none; }
 
         #overlay .msg {
-            color: #00ffff;
+            color: #ff6600;
             font-size: 1.4rem;
             font-weight: 700;
             letter-spacing: 0.3rem;
-            text-shadow: 0 0 20px #00ffff;
+            text-shadow: 0 0 20px #ff6600;
             text-align: center;
         }
 
@@ -255,25 +255,20 @@
         setTimeout(() => el.classList.remove('flash'), 300);
     }
 
-    // Draw a monkey face as the paddle
     function drawMonkey(x, y, w, h, facing, glowColor) {
         const cx = x + w / 2;
         const cy = y + h / 2;
         const radius = w / 2;
 
         ctx.save();
-
-        // Glow effect
         ctx.shadowColor = glowColor;
         ctx.shadowBlur = 18;
 
-        // Body / head (brown circle)
         ctx.fillStyle = '#8B4513';
         ctx.beginPath();
         ctx.ellipse(cx, cy, radius, h * 0.45, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ears
         const earR = radius * 0.45;
         ctx.fillStyle = '#8B4513';
         ctx.beginPath();
@@ -283,7 +278,6 @@
         ctx.arc(cx + radius * 0.85, cy, earR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner ears
         ctx.fillStyle = '#D2691E';
         ctx.beginPath();
         ctx.arc(cx - radius * 0.85, cy, earR * 0.55, 0, Math.PI * 2);
@@ -292,7 +286,6 @@
         ctx.arc(cx + radius * 0.85, cy, earR * 0.55, 0, Math.PI * 2);
         ctx.fill();
 
-        // Face patch (lighter tan oval)
         ctx.fillStyle = '#D2691E';
         ctx.beginPath();
         ctx.ellipse(cx, cy + h * 0.05, radius * 0.65, h * 0.3, 0, 0, Math.PI * 2);
@@ -300,12 +293,10 @@
 
         ctx.shadowBlur = 0;
 
-        // Eyes
         const eyeOffsetX = radius * 0.3;
         const eyeOffsetY = -h * 0.1;
         const eyeR = radius * 0.18;
 
-        // Eye whites
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(cx - eyeOffsetX, cy + eyeOffsetY, eyeR, 0, Math.PI * 2);
@@ -314,7 +305,6 @@
         ctx.arc(cx + eyeOffsetX, cy + eyeOffsetY, eyeR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pupils — look toward the ball (facing direction)
         const pupilOffset = facing === 'right' ? eyeR * 0.3 : -eyeR * 0.3;
         ctx.fillStyle = '#111';
         ctx.beginPath();
@@ -324,7 +314,6 @@
         ctx.arc(cx + eyeOffsetX + pupilOffset, cy + eyeOffsetY, eyeR * 0.55, 0, Math.PI * 2);
         ctx.fill();
 
-        // Nostrils
         ctx.fillStyle = '#5a2800';
         ctx.beginPath();
         ctx.arc(cx - radius * 0.15, cy + h * 0.1, radius * 0.07, 0, Math.PI * 2);
@@ -333,7 +322,6 @@
         ctx.arc(cx + radius * 0.15, cy + h * 0.1, radius * 0.07, 0, Math.PI * 2);
         ctx.fill();
 
-        // Smile
         ctx.strokeStyle = '#5a2800';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -362,10 +350,9 @@
         ball.x += ball.vx;
         ball.y += ball.vy;
 
-        if (ball.y - BALL_SIZE / 2 <= 0) { ball.vy = Math.abs(ball.vy); spawnParticles(ball.x, 0, '#00ffff'); }
-        if (ball.y + BALL_SIZE / 2 >= H) { ball.vy = -Math.abs(ball.vy); spawnParticles(ball.x, H, '#00ffff'); }
+        if (ball.y - BALL_SIZE / 2 <= 0) { ball.vy = Math.abs(ball.vy); spawnParticles(ball.x, 0, '#ff6600'); }
+        if (ball.y + BALL_SIZE / 2 >= H) { ball.vy = -Math.abs(ball.vy); spawnParticles(ball.x, H, '#ff6600'); }
 
-        // Player paddle collision
         const playerRight = 14 + PADDLE_W;
         if (
             ball.x - BALL_SIZE / 2 <= playerRight &&
@@ -377,138 +364,9 @@
             const hitPos = (ball.y - player.y) / PADDLE_H - 0.5;
             ball.vy = hitPos * 10;
             ball.x = playerRight + BALL_SIZE / 2;
-            spawnParticles(ball.x, ball.y, '#00ffff');
-        }
-
-        // CPU paddle collision
-        const cpuX = W - 14 - PADDLE_W;
-        if (
-            ball.x + BALL_SIZE / 2 >= cpuX &&
-            ball.x - BALL_SIZE / 2 <= cpuX + PADDLE_W &&
-            ball.y >= cpu.y &&
-            ball.y <= cpu.y + PADDLE_H
-        ) {
-            ball.vx = -Math.abs(ball.vx) * 1.05;
-            const hitPos = (ball.y - cpu.y) / PADDLE_H - 0.5;
-            ball.vy = hitPos * 10;
-            ball.x = cpuX - BALL_SIZE / 2;
             spawnParticles(ball.x, ball.y, '#ff6600');
         }
 
-        const maxSpeed = 14;
-        const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
-        if (speed > maxSpeed) {
-            ball.vx = (ball.vx / speed) * maxSpeed;
-            ball.vy = (ball.vy / speed) * maxSpeed;
-        }
-
-        if (ball.x < 0) {
-            cpu.score++;
-            computerScoreEl.textContent = cpu.score;
-            flashScore(computerScoreEl);
-            if (cpu.score >= WIN_SCORE) { endGame('CPU WINS 🐒'); return; }
-            resetBall(-1);
-        }
-        if (ball.x > W) {
-            player.score++;
-            playerScoreEl.textContent = player.score;
-            flashScore(playerScoreEl);
-            if (player.score >= WIN_SCORE) { endGame('YOU WIN! 🐒'); return; }
-            resetBall(1);
-        }
-
-        state.particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life -= 0.05;
-            p.vx *= 0.95;
-            p.vy *= 0.95;
-        });
-        state.particles = state.particles.filter(p => p.life > 0);
-    }
-
-    function draw() {
-        ctx.fillStyle = '#000811';
-        ctx.fillRect(0, 0, W, H);
-
-        // Center dashed line
-        ctx.setLineDash([10, 15]);
-        ctx.strokeStyle = '#ffffff18';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(W / 2, 0);
-        ctx.lineTo(W / 2, H);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Draw monkey paddles
-        drawMonkey(14, state.player.y, PADDLE_W, PADDLE_H, 'right', '#00ffff');
-        drawMonkey(W - 14 - PADDLE_W, state.cpu.y, PADDLE_W, PADDLE_H, 'left', '#ff6622');
-
-        // Ball
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 25;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(state.ball.x, state.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Particles
-        state.particles.forEach(p => {
-            ctx.globalAlpha = p.life;
-            ctx.fillStyle = p.color;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = 8;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-            ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-    }
-
-    function loop() {
-        update();
-        draw();
-        animFrame = requestAnimationFrame(loop);
-    }
-
-    function startGame() {
-        if (gameRunning) return;
-        gameRunning = true;
-        overlay.classList.add('hidden');
-        state.player.y = H / 2 - PADDLE_H / 2;
-        state.cpu.y = H / 2 - PADDLE_H / 2;
-        resetBall(1);
-        loop();
-    }
-
-    function endGame(msg) {
-        cancelAnimationFrame(animFrame);
-        gameRunning = false;
-        overlayMsg.textContent = msg;
-        overlaySub.textContent = 'PRESS RESET TO PLAY AGAIN';
-        overlay.classList.remove('hidden');
-    }
-
-    function resetGame() {
-        cancelAnimationFrame(animFrame);
-        gameRunning = false;
-        state.player.score = 0;
-        state.cpu.score = 0;
-        state.particles = [];
-        playerScoreEl.textContent = '0';
-        computerScoreEl.textContent = '0';
-        overlayMsg.textContent = 'PRESS START';
-        overlaySub.textContent = 'TO BEGIN';
-        overlay.classList.remove('hidden');
-        state.player.y = H / 2 - PADDLE_H / 2;
-        state.cpu.y = H / 2 - PADDLE_H / 2;
-        draw();
-    }
-
-    draw();
-</script>
-</body>
-</html>
+        const cpuX = W - 14 - PADDLE_W;
+        if (
+            ball.x + BALL_SIZE /
